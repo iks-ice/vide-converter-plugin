@@ -1,22 +1,26 @@
 chrome.runtime.onConnect.addListener((port) => {
-  port.onMessage.addListener((msg) => {
-
+  console.log("port", port);
+  port.onMessage.addListener((videoUrl) => {
+    console.log("get videoUrl from background script", videoUrl);
     if ("WebSocket" in window) {
       let ws;
       try {
+        console.log("open websocket", ws);
         ws = new WebSocket("ws://127.0.0.1:9000");
       } catch (error) {
         alert(error.message);
       }
-      ws.onopen = (e) => {
-        const videoBlob = new Blob([msg.video], {type: "video/webm"});
+      ws.onopen = async (e) => {
+        //download(msg.video);
+        const videoBlob = await fetch(videoUrl).then(res => res.blob());
+        console.log("fetched video blob", videoBlob);
         ws.send(videoBlob);
-        download(videoBlob);
       }
 
       ws.onmessage = (msg) => {
-        console.log(msg.data);
-        port.postMessage(msg.data);
+        console.log("received from server", msg);
+        //port.postMessage(msg.data);
+        download(msg.data);
       }
     }
     else {
@@ -25,12 +29,12 @@ chrome.runtime.onConnect.addListener((port) => {
   });
 });
 function download(blob) {
-  var url = URL.createObjectURL(blob);
+  url = URL.createObjectURL(blob);
   var a = document.createElement("a");
   document.body.appendChild(a);
   a.style = "display: none";
   a.href = url;
-  a.download = "test.webm";
+  a.download = "test.avi";
   a.click();
   window.URL.revokeObjectURL(url);
 }

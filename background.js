@@ -1,8 +1,13 @@
 function main() {
+  console.log("main run");
   let notificationId = "";
+  let listenersSet = false;
   chrome.runtime.onInstalled.addListener(() => {
-    chrome.runtime.onMessageExternal.addListener((req) => {
-      setListeners(req);
+    chrome.runtime.onMessageExternal.addListener((videoUrl) => {
+      if (!listenersSet) {
+        setListeners(videoUrl);
+        listenersSet = true;
+      }
       showNotification("Подтвердите действие");
     });
   });
@@ -10,6 +15,7 @@ function main() {
 main();
 
 function showNotification(message) {
+  console.log("showNotification fired");
   chrome.notifications.create({
     buttons: [
       {
@@ -28,19 +34,21 @@ function showNotification(message) {
   id => notificationId = id);
 }
 
-function setListeners({video}) {
+function setListeners(videoUrl) {
   chrome.notifications.onButtonClicked.addListener(async (nId, btnId) => {
     if (nId === notificationId && btnId === 0) {
       // send to electron app
-      sendVideo(video);
+      console.log("msg sent to content script", videoUrl);
+      sendVideo(videoUrl);
     }
   });
+  setListeners = null;
 }
 
-async function sendVideo(video) {
+async function sendVideo(videoUrl) {
   chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
     const port = chrome.tabs.connect(tabs[0].id, {name: "video"});
-    port.postMessage({video});
+    port.postMessage(videoUrl);
     port.onMessage.addListener((msg) => {
       console.log(msg);
     });
